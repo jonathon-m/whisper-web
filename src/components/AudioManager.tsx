@@ -25,7 +25,15 @@ function titleCase(str: string) {
         .join("");
 }
 
-export function AudioManager(props: { transcriber: Transcriber }) {
+export function AudioManager(props: { 
+    transcriber: Transcriber;
+    onAudioDataChange?: (audioData: {
+        buffer: AudioBuffer;
+        url: string;
+        source: string;
+        mimeType: string;
+    } | undefined) => void;
+}) {
     const [progress, setProgress] = useState<number | undefined>(0);
     const [audioData, setAudioData] = useState<
         | {
@@ -45,7 +53,8 @@ export function AudioManager(props: { transcriber: Transcriber }) {
         setAudioDownloadUrl(undefined);
     };
 
-    const setAudioFromDownload = async (
+    const setAudioFromDownload = useCallback(
+        async (
         data: ArrayBuffer,
         mimeType: string,
     ) => {
@@ -56,13 +65,15 @@ export function AudioManager(props: { transcriber: Transcriber }) {
             new Blob([data], { type: "audio/*" }),
         );
         const decoded = await audioCTX.decodeAudioData(data);
-        setAudioData({
+        const audioData = {
             buffer: decoded,
             url: blobUrl,
             source: AudioSource.URL,
             mimeType: mimeType,
-        });
-    };
+        };
+        setAudioData(audioData);
+        props.onAudioDataChange?.(audioData);
+    }, [props]);
 
     const setAudioFromRecording = async (data: Blob) => {
         resetAudio();
@@ -79,12 +90,14 @@ export function AudioManager(props: { transcriber: Transcriber }) {
             const arrayBuffer = fileReader.result as ArrayBuffer;
             const decoded = await audioCTX.decodeAudioData(arrayBuffer);
             setProgress(undefined);
-            setAudioData({
+            const audioData = {
                 buffer: decoded,
                 url: blobUrl,
                 source: AudioSource.RECORDING,
                 mimeType: data.type,
-            });
+            };
+            setAudioData(audioData);
+            props.onAudioDataChange?.(audioData);
         };
         fileReader.readAsArrayBuffer(data);
     };
@@ -120,7 +133,7 @@ export function AudioManager(props: { transcriber: Transcriber }) {
                 }
             }
         },
-        [audioDownloadUrl],
+        [audioDownloadUrl, setAudioFromDownload],
     );
 
     // When URL changes, download audio
@@ -152,12 +165,14 @@ export function AudioManager(props: { transcriber: Transcriber }) {
                         text={t("manager.from_file")}
                         onFileUpdate={(decoded, blobUrl, mimeType) => {
                             props.transcriber.onInputChange();
-                            setAudioData({
+                            const audioData = {
                                 buffer: decoded,
                                 url: blobUrl,
                                 source: AudioSource.FILE,
                                 mimeType: mimeType,
-                            });
+                            };
+                            setAudioData(audioData);
+                            props.onAudioDataChange?.(audioData);
                         }}
                     />
                     {navigator.mediaDevices && (
@@ -216,87 +231,12 @@ export function AudioManager(props: { transcriber: Transcriber }) {
             )}
 
             <InfoTile
-                className='fixed bottom-4 right-28'
+                className='fixed bottom-4 right-14'
                 icon={<InfoIcon />}
                 title={t("manager.info_title")}
                 content={
-                    <Trans i18nKey='manager.info_content'>
-                        Whisper-web is a small website to help you transcribe
-                        audio speech into text.
-                        <br />
-                        The first time you give it a file, it will download an
-                        open AI model and perform the transcription locally in
-                        your browser. This means that your audio file never
-                        leaves your device. It also means that the transcription
-                        will be slow or fail if your computer/smartphone is not
-                        powerful enough to perform it. In the settings (bottom
-                        right corner), you can pick among different models and
-                        various quantisation levels. A smaller model with a
-                        lower quantisation will be faster but make more
-                        mistakes. By default, Whisper-web uses small models but
-                        you can try a bigger one and see if it works on your
-                        device. For most languages, it is best to use{" "}
-                        <a
-                            className='underline'
-                            target='_blank'
-                            href='https://openai.com/index/whisper/'
-                        >
-                            OpenAI's official models
-                        </a>{" "}
-                        (Multilingual) but for Swedish or Norwegian, it is
-                        recommended to use versions that have been specifically
-                        trained for them. The Swedish models are called{" "}
-                        <a
-                            className='underline'
-                            target='_blank'
-                            href='https://huggingface.co/KBLab/kb-whisper-tiny'
-                        >
-                            KB-whisper
-                        </a>{" "}
-                        and have been trained by the{" "}
-                        <a
-                            className='underline'
-                            target='_blank'
-                            href='https://kb.se/samverkan-och-utveckling/nytt-fran-kb/nyheter-samverkan-och-utveckling/2025-02-20-valtranad-ai-modell-forvandlar-tal-till-text.html'
-                        >
-                            national library
-                        </a>{" "}
-                        on data from parliament debates and the Swedish public
-                        service. The Norwegian ones are named{" "}
-                        <a
-                            className='underline'
-                            target='_blank'
-                            href='https://huggingface.co/collections/NbAiLab/nb-whisper-65cb8322877f943912afcd9f'
-                        >
-                            nb-whisper
-                        </a>{" "}
-                        and have also been trained by the country's{" "}
-                        <a
-                            className='underline'
-                            target='_blank'
-                            href='https://arxiv.org/abs/2402.01917'
-                        >
-                            national library
-                        </a>
-                        . This project's source code is available on{" "}
-                        <a
-                            className='underline'
-                            target='_blank'
-                            href='https://github.com/PierreMesure/whisper-web'
-                        >
-                            Github
-                        </a>
-                        . Feel free to reuse or contribute to it. The website is
-                        hosted on{" "}
-                        <a
-                            className='underline'
-                            target='_blank'
-                            href='https://www.statichost.eu'
-                        >
-                            statichost.eu
-                        </a>
-                        , a privacy-friendly service to host static sites.
-                    </Trans>
+                    <Trans i18nKey='manager.info_content'/>
+                        
                 }
             />
             <SettingsTile
@@ -515,27 +455,6 @@ function SettingsModal(props: {
                                 {names[i]}
                             </option>
                         ))}
-                    </select>
-
-                    <label>{t("manager.select_task")}</label>
-                    <select
-                        className='mt-1 mb-3 bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500 disabled:opacity-50 disabled:cursor-not-allowed'
-                        value={
-                            isMultilingual
-                                ? props.transcriber.subtask
-                                : "transcribe"
-                        }
-                        onChange={(e) => {
-                            props.transcriber.setSubtask(e.target.value);
-                        }}
-                        disabled={!isMultilingual}
-                    >
-                        <option value={"transcribe"}>
-                            {t("manager.transcribe")}
-                        </option>
-                        <option value={"translate"}>
-                            {t("manager.translate")}
-                        </option>
                     </select>
                 </>
             }

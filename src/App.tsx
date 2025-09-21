@@ -2,24 +2,17 @@ import { t } from "i18next";
 import { AudioManager } from "./components/AudioManager";
 import Transcript from "./components/Transcript";
 import { useTranscriber } from "./hooks/useTranscriber";
-import { Trans, useTranslation } from "react-i18next";
-import LanguageSelector from "./components/LanguageSelector";
-import { useEffect, useState } from "react";
+import { Trans } from "react-i18next";
+import { useState } from "react";
 
 function App() {
     const transcriber = useTranscriber();
-
-    const { i18n } = useTranslation();
-    const [currentLanguage, setCurrentLanguage] = useState(i18n.language);
-
-    const handleChangeLanguage = (newLanguage: string) => {
-        setCurrentLanguage(newLanguage);
-        i18n.changeLanguage(newLanguage);
-    };
-
-    useEffect(() => {
-        setCurrentLanguage(i18n.language);
-    }, [i18n.language]);
+    const [audioData, setAudioData] = useState<{
+        buffer: AudioBuffer;
+        url: string;
+        source: string;
+        mimeType: string;
+    } | undefined>(undefined);
 
     return (
         <>
@@ -31,8 +24,8 @@ function App() {
                 <h2 className='mt-3 mb-5 px-4 text-center text-1xl font-semibold tracking-tight text-slate-900 sm:text-2xl'>
                     {t('app.subtitle')}
                 </h2>
-                <AudioManager transcriber={transcriber} />
-                <Transcript transcribedData={transcriber.output} />
+                <AudioManager transcriber={transcriber} onAudioDataChange={setAudioData} />
+                <Transcript transcribedData={transcriber.output} audioData={audioData} />
             </div>
 
             <footer className='text-center m-4'>
@@ -41,17 +34,18 @@ function App() {
                 <Trans
                   i18nKey="app.footer_credits"
                   components={{
-                    authorLink: <a className="underline" href="https://github.com/PierreMesure/whisper-web" />,
-                    demoLink: <a className="underline" href="https://github.com/Xenova/whisper-web" />
+                    authorLink1: <a className="underline" href="https://nceph.anu.edu.au/people/dr-oliver-black" />,
+                    authorLink2: <a className="underline" href="https://github.com/jonathon-m" />,
+                    basedOnLink: <a className="underline" href="https://github.com/PierreMesure/whisper-web" />,
                   }}
                 />
             </footer>
         </div>
-        <LanguageSelector
+        {/* <LanguageSelector
             className='fixed bottom-4 right-16'
             currentLanguage={currentLanguage}
             onChangeLanguage={handleChangeLanguage}
-        />
+        /> */}
         </>
     );
 }
