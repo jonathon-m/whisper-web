@@ -25,6 +25,9 @@
             "gpu": "GPU",
             "gpu_disabled": "GPU (unsupported browser)",
             "clear_cache": "Clear cache",
+            "download_model": "Download Model",
+            "model_ready": "Model Ready - You can now go offline",
+            "download_description": "Download the AI model to get started. This only needs to be done once and allows you to transcribe audio completely offline.",
             "info_title": "Scriptless",
             "info_content": "Scriptless is a small website to help you transcribe audio speech into text. \n\nBefore you upload a file, it will download an AI model that can perform the transcription locally in your browser. \n\nThis means that your audio file never leaves your device. It also means that the transcription will be slow or fail if your computer/smartphone is not powerful enough to perform it.\n\nIn the settings (bottom right corner), you can pick among different models and various quantisation levels. A smaller model with a lower quantisation will be faster but make more mistakes. By default, Scriptless uses small models but you can try a bigger one and see if it works on your device.\n\nFor most languages, it is best to use <4>OpenAI's official models</4> (Multilingual)."
         },

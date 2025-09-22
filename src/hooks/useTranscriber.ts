@@ -31,7 +31,10 @@ export interface Transcriber {
     onInputChange: () => void;
     isBusy: boolean;
     isModelLoading: boolean;
+    isModelReady: boolean;
+    isCheckingModel: boolean;
     progressItems: ProgressItem[];
+    downloadModel: () => void;
     start: (audioData: AudioBuffer | undefined) => void;
     output?: TranscriberData;
     model: string;
@@ -52,6 +55,8 @@ export function useTranscriber(): Transcriber {
     );
     const [isBusy, setIsBusy] = useState(false);
     const [isModelLoading, setIsModelLoading] = useState(false);
+    const [isModelReady, setIsModelReady] = useState(false);
+    const [isCheckingModel, setIsCheckingModel] = useState(true);
 
     const [progressItems, setProgressItems] = useState<ProgressItem[]>([]);
 
@@ -91,8 +96,18 @@ export function useTranscriber(): Transcriber {
             case "ready":
                 setIsModelLoading(false);
                 break;
+            case "model_ready":
+                setIsModelLoading(false);
+                setIsModelReady(true);
+                setIsCheckingModel(false);
+                break;
+            case "model_check_complete":
+                setIsCheckingModel(false);
+                break;
             case "error":
                 setIsBusy(false);
+                setIsModelLoading(false);
+                setIsCheckingModel(false);
                 alert(
                     `An error occurred: "${message.data.message}". Please file a bug report.`,
                 );
@@ -123,14 +138,52 @@ export function useTranscriber(): Transcriber {
         Constants.getDefaultLanguage(i18n.language),
     );
 
+    // Check if model is already loaded on initialization
+    useEffect(() => {
+        console.log("Checking existing model");
+        const checkExistingModel = async () => {
+            try {
+                // Try to get the existing model instance
+                webWorker.postMessage({
+                    action: "check_model",
+                    model,
+                    dtype,
+                    gpu,
+                });
+            } catch (error) {
+                console.log("Error checking existing model", error);
+                console.log("No existing model found");
+                setIsCheckingModel(false);
+            }
+        };
+
+        checkExistingModel();
+    }, []); // Only run once on mount
+
     useEffect(() => {
         setModel(Constants.getDefaultModel(i18n.language));
         setLanguage(Constants.getDefaultLanguage(i18n.language));
+        setIsModelReady(false); // Reset model ready state when model changes
     }, [i18n.language]);
+
+    // Reset model ready state when model settings change
+    useEffect(() => {
+        setIsModelReady(false);
+    }, [model, dtype, gpu]);
 
     const onInputChange = useCallback(() => {
         setTranscript(undefined);
     }, []);
+
+    const downloadModelRequest = useCallback(async () => {
+        setIsModelReady(false);
+        webWorker.postMessage({
+            action: "download_model",
+            model,
+            dtype,
+            gpu,
+        });
+    }, [webWorker, model, dtype, gpu]);
 
     const postRequest = useCallback(
         async (audioData: AudioBuffer | undefined) => {
@@ -155,6 +208,7 @@ export function useTranscriber(): Transcriber {
                 }
 
                 webWorker.postMessage({
+                    action: "transcribe",
                     audio,
                     model,
                     dtype,
@@ -175,7 +229,10 @@ export function useTranscriber(): Transcriber {
             onInputChange,
             isBusy,
             isModelLoading,
+            isModelReady,
+            isCheckingModel,
             progressItems,
+            downloadModel: downloadModelRequest,
             start: postRequest,
             output: transcript,
             model,
@@ -193,7 +250,10 @@ export function useTranscriber(): Transcriber {
         onInputChange,
         isBusy,
         isModelLoading,
+        isModelReady,
+        isCheckingModel,
         progressItems,
+        downloadModelRequest,
         postRequest,
         transcript,
         model,

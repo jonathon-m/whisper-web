@@ -1,4 +1,4 @@
-import { pipeline, WhisperTextStreamer } from "@huggingface/transformers";
+import { pipeline, WhisperTextStreamer, env } from "@huggingface/transformers";
 
 // Define model factories
 // Ensures only one model is created of each type
@@ -32,16 +32,33 @@ class PipelineFactory {
 self.addEventListener("message", async (event) => {
     const message = event.data;
 
-    // Do some work...
-    // TODO use message data
-    let transcript = await transcribe(message);
-    if (transcript === null) return;
+    if (message.action === "check_model") {
+        // Check if model is already loaded
+        await checkExistingModel(message);
+    } else if (message.action === "download_model") {
+        // Handle model download
+        await downloadModel(message);
+    } else if (message.action === "transcribe") {
+        // Handle transcription
+        let transcript = await transcribe(message);
+        if (transcript === null) return;
 
-    // Send the result back to the main thread
-    self.postMessage({
-        status: "complete",
-        data: transcript,
-    });
+        // Send the result back to the main thread
+        self.postMessage({
+            status: "complete",
+            data: transcript,
+        });
+    } else {
+        // Backward compatibility - if no action specified, assume transcribe
+        let transcript = await transcribe(message);
+        if (transcript === null) return;
+
+        // Send the result back to the main thread
+        self.postMessage({
+            status: "complete",
+            data: transcript,
+        });
+    }
 });
 
 class AutomaticSpeechRecognitionPipelineFactory extends PipelineFactory {
@@ -50,6 +67,47 @@ class AutomaticSpeechRecognitionPipelineFactory extends PipelineFactory {
     static dtype = null;
     static gpu = false;
 }
+
+const checkExistingModel = async ({ model, dtype, gpu }) => {
+    const url = `https://huggingface.co/${model}/resolve/main/config.json`;
+    const cache = await caches.open("transformers-cache"); // default cache name used internally
+    const match = await cache.match(url);
+    if (match) {
+        self.postMessage({
+            status: "model_ready",
+        });
+    } else {
+        self.postMessage({
+            status: "model_check_complete",
+        });
+    }
+
+};
+
+const downloadModel = async ({ model, dtype, gpu }) => {
+    const p = AutomaticSpeechRecognitionPipelineFactory;
+    if (p.model !== model || p.dtype !== dtype || p.gpu !== gpu) {
+        // Invalidate model if different model, dtype, or gpu setting
+        p.model = model;
+        p.dtype = dtype;
+        p.gpu = gpu;
+
+        if (p.instance !== null) {
+            (await p.getInstance()).dispose();
+            p.instance = null;
+        }
+    }
+
+    // Load transcriber model
+    const transcriber = await p.getInstance((data) => {
+        self.postMessage(data);
+    });
+
+    // Send ready signal
+    self.postMessage({
+        status: "model_ready",
+    });
+};
 
 const transcribe = async ({ audio, model, dtype, gpu, subtask, language }) => {
     const isDistilWhisper = model.startsWith("distil-whisper/");

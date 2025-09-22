@@ -135,14 +135,6 @@ export const MODELS: { [key: string]: [string, string] } = {
     "onnx-community/whisper-medium-ONNX": ["medium", ""],
     "onnx-community/whisper-large-v3-turbo": ["large-v3-turbo", ""],
     "onnx-community/distil-small.en": ["distil-small.en", "en"],
-    "KBLab/kb-whisper-tiny": ["kb-whisper-tiny", "sv"],
-    "KBLab/kb-whisper-base": ["kb-whisper-base", "sv"],
-    "KBLab/kb-whisper-small": ["kb-whisper-small", "sv"],
-    "KBLab/kb-whisper-medium": ["kb-whisper-medium", "sv"],
-    "KBLab/kb-whisper-large": ["kb-whisper-large", "sv"],
-    "PierreMesure/nb-whisper-tiny-onnx": ["nb-whisper-tiny", "no"],
-    "PierreMesure/nb-whisper-base-onnx": ["nb-whisper-base", "no"],
-    "PierreMesure/nb-whisper-small-onnx": ["nb-whisper-small", "no"],
 };
 
 export const DTYPES: string[] = [
@@ -164,29 +156,8 @@ export enum AudioSource {
 
 const isMobileOrTablet = mobileTabletCheck();
 
-function getDefaultAudioUrl(language: string): string {
-    switch (language) {
-        case "sv":
-            return "https://raw.githubusercontent.com/PierreMesure/whisper-web/refs/heads/main/public/palme.wav";
-        case "no":
-            return "https://raw.githubusercontent.com/NbAiLab/nb-whisper/main/audio/king.mp3";
-        case "es":
-            return "https://raw.githubusercontent.com/PierreMesure/whisper-web/refs/heads/main/public/espanol.mp3";
-        default:
-            return `https://huggingface.co/datasets/Xenova/transformers.js-docs/resolve/main/${
-                isMobileOrTablet ? "jfk" : "ted_60_16k"
-            }.wav`;
-    }
-}
-
 function getDefaultModel(language: string): string {
     switch (language) {
-        case "sv":
-            return `KBLab/kb-whisper-${isMobileOrTablet ? "tiny" : "base"}`;
-        case "no":
-            return `PierreMesure/nb-whisper-${
-                isMobileOrTablet ? "tiny" : "base"
-            }`;
         default:
             return `onnx-community/whisper-${
                 isMobileOrTablet ? "tiny" : "base"
@@ -200,7 +171,6 @@ function getDefaultLanguage(language: string): string {
 
 export default {
     SAMPLING_RATE: 16000,
-    getDefaultAudioUrl,
     getDefaultModel,
     DEFAULT_SUBTASK: "transcribe",
     getDefaultLanguage,
